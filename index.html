@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Music Generator MIDI</title>
+<style>
+:root{--bg:#1a1a2e;--panel:#16213e;--accent:#0f3460;--gold:#e94560;--text:#eee;--text2:#aaa;--border:#2a2a4a;--btn:#533483;--btn-hover:#e94560}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+h1{font-size:1.8em;margin-bottom:5px;background:linear-gradient(135deg,#e94560,#533483);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700}
+.subtitle{color:var(--text2);font-size:.9em;margin-bottom:25px;letter-spacing:1px}
+.container{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;max-width:1200px;width:100%}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;flex:1;min-width:280px;max-width:400px}
+.panel h3{color:var(--gold);margin-bottom:15px;font-size:1.1em;text-transform:uppercase;letter-spacing:2px}
+.style-buttons{display:flex;flex-direction:column;gap:8px}
+.style-btn{background:var(--accent);color:var(--text);border:1px solid var(--border);padding:10px 16px;border-radius:8px;cursor:pointer;font-size:.95em;transition:all .3s;text-align:left}
+.style-btn:hover{background:#1a4a7a;border-color:var(--gold)}
+.style-btn.active{background:var(--btn);border-color:var(--gold);box-shadow:0 0 15px rgba(233,68,96,.3)}
+.style-btn .style-name{font-weight:bold;display:block}
+.style-btn .style-desc{font-size:.8em;color:var(--text2)}
+.main-btn{background:var(--btn);color:white;border:none;padding:14px 30px;border-radius:10px;font-size:1.1em;cursor:pointer;width:100%;margin-top:15px;font-weight:bold;letter-spacing:1px;transition:all .3s}
+.main-btn:hover{background:var(--btn-hover);box-shadow:0 0 25px rgba(233,68,96,.5)}
+.main-btn.stop{background:#555}
+.main-btn.midi{background:#2ecc71;margin-top:10px}
+.main-btn.midi:hover{background:#27ae60}
+.slider-group{margin:12px 0}
+.slider-group label{display:block;margin-bottom:4px;color:var(--text2);font-size:.85em}
+.slider-group input[type=range]{width:100%;accent-color:var(--gold)}
+.info-box{background:rgba(0,0,0,.3);border-radius:8px;padding:12px;margin-top:12px;font-size:.8em;color:var(--text2);font-family:monospace;max-height:200px;overflow-y:auto}
+.grammar-display{line-height:1.6}
+.grammar-display .rule{color:#7ec8e3}
+.grammar-display .pattern{color:#f0c060}
+.layer-indicator{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.layer-dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+.layer-dot.drums{background:#e74c3c}
+.layer-dot.bass{background:#3498db}
+.layer-dot.chords{background:#2ecc71}
+.layer-dot.melody{background:#f39c12}
+.visualizer{display:flex;gap:3px;align-items:flex-end;height:60px;margin-top:15px}
+.vis-bar{flex:1;background:var(--gold);border-radius:2px 2px 0 0;transition:height .1s;min-width:4px}
+.midi-info{background:rgba(46,204,113,.1);border:1px solid #2ecc71;border-radius:8px;padding:10px;margin-top:10px;font-size:.8em;color:#2ecc71;display:none}
+.midi-info.show{display:block}
+</style>
+</head>
+<body>
+<h1>🎵 Grammar-Based Music Generator</h1>
+<p class="subtitle">Expert System · Rule-Based · MIDI Export</p>
+<div class="container">
+<div class="panel"><h3>🎨 Стилевые пресеты</h3><div class="style-buttons" id="styleButtons">
+<button class="style-btn active" data-style="ambient"><span class="style-name">🌫️ Ambient</span><span class="style-desc">Длинные ноты</span></button>
+<button class="style-btn" data-style="techno"><span class="style-name">🔊 Techno</span><span class="style-desc">Драйвовый ритм</span></button>
+<button class="style-btn" data-style="jazz"><span class="style-name">🎷 Jazz</span><span class="style-desc">Свинг</span></button>
+<button class="style-btn" data-style="classical"><span class="style-name">🎻 Classical</span><span class="style-desc">Арпеджио</span></button>
+</div></div>
+<div class="panel"><h3>⚙️ Параметры</h3>
+<div class="slider-group"><label>BPM: <span id="bpmValue">120</span></label><input type="range" id="bpm" min="60" max="200" value="120" step="1"></div>
+<div class="slider-group"><label>Плотность: <span id="densityValue">50</span>%</label><input type="range" id="density" min="10" max="100" value="50" step="1"></div>
+<button class="main-btn" id="generateBtn">▶ Сгенерировать</button>
+<button class="main-btn stop" id="stopBtn" style="display:none">⏹ Остановить</button>
+<button class="main-btn midi" id="exportMidiBtn">💾 Скачать MIDI</button>
+<div class="midi-info" id="midiInfo">✅ MIDI готов!</div>
+<div class="layer-indicator"><span><span class="layer-dot drums"></span> Drums</span><span><span class="layer-dot bass"></span> Bass</span><span><span class="layer-dot chords"></span> Chords</span><span><span class="layer-dot melody"></span> Melody</span></div>
+<div class="visualizer" id="visualizer"></div>
+</div>
+<div class="panel"><h3>📜 Грамматика</h3><div class="info-box grammar-display" id="grammarDisplay">Loading...</div></div>
+</div>
+<script>
+let audioCtx=null,isPlaying=!1,currentStyle="ambient",currentBpm=120,density=.5,visBars=[];
+function initAudio(){audioCtx||(audioCtx=new(window.AudioContext||window.webkitAudioContext)),"suspended"===audioCtx.state&&audioCtx.resume()}
+function playNote(e,t,n,o="sine",a=.3){if(!audioCtx)return;let i=audioCtx.createOscillator(),d=audioCtx.createGain();i.type=o,i.frequency.setValueAtTime(e,t),d.gain.setValueAtTime(a,t),d.gain.exponentialRampToValueAtTime(.001,t+n),i.connect(d),d.connect(audioCtx.destination),i.start(t),i.stop(t+n)}
+function playNoise(e,t,n=.2){if(!audioCtx)return;let o=audioCtx.sampleRate*t,a=audioCtx.createBuffer(1,o,audioCtx.sampleRate),i=a.getChannelData(0);for(let e=0;e<o;e++)i[e]=(2*Math.random()-1)*n;let d=audioCtx.createBufferSource();d.buffer=a;let r=audioCtx.createGain(),s=audioCtx.createBiquadFilter();s.type="highpass",s.frequency.setValueAtTime(8e3,e),r.gain.setValueAtTime(n,e),r.gain.exponentialRampToValueAtTime(.001,e+t),d.connect(s),s.connect(r),r.connect(audioCtx.destination),d.start(e),d.stop(e+t)}
+const NOTES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"],NOTE_TO_FREQ={},NOTE_TO_MIDI={};
+for(let e=1;e<=7;e++)NOTES.forEach((t,n)=>{let o=(e+1)*12+n;NOTE_TO_FREQ[t+e]=440*Math.pow(2,(o-69)/12),NOTE_TO_MIDI[t+e]=o});
+const DRUM_MIDI={kick:36,clap:39,hh:42},SCALES={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10],mixolydian:[0,2,4,5,7,9,10]};
+function getScaleNotes(e,t){let n=NOTES.indexOf(e);return SCALES[t].map(e=>NOTES[(n+e)%12])}
+function getChordNotes(e,t){let n=NOTES.indexOf(e),o={maj:[0,4,7],min:[0,3,7],dim:[0,3,6],aug:[0,4,8],maj7:[0,4,7,11],min7:[0,3,7,10],dom7:[0,4,7,10]};return(o[t]||o.maj).map(e=>NOTES[(n+e)%12])}
+const GRAMMARS={ambient:{name:"Ambient",root:"C",scale:"dorian",chordProgression:[{chord:"C",type:"maj7",duration:4},{chord:"F",type:"maj7",duration:4},{chord:"G",type:"dom7",duration:4},{chord:"C",type:"maj7",duration:4}],drums:{kick:{pattern:[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],vol:.4},hh:{pattern:[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],vol:.08},clap:{pattern:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],vol:.15}},bass:{pattern:"root",octave:2,rhythm:[1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],type:"sine",vol:.35},chords:{rhythm:[1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0],octave:4,type:"sine",vol:.2},melody:{density:.3,octave:5,type:"triangle",vol:.25}},techno:{name:"Techno",root:"E",scale:"minor",chordProgression:[{chord:"E",type:"min",duration:2},{chord:"E",type:"min",duration:2},{chord:"G",type:"maj",duration:2},{chord:"A",type:"maj",duration:2}],drums:{kick:{pattern:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],vol:.6},hh:{pattern:[0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0],vol:.15},clap:{pattern:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],vol:.3}},bass:{pattern:"root",octave:2,rhythm:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],type:"sawtooth",vol:.4},chords:{rhythm:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],octave:4,type:"sawtooth",vol:.2},melody:{density:.6,octave:5,type:"square",vol:.2}},jazz:{name:"Jazz",root:"F",scale:"mixolydian",chordProgression:[{chord:"F",type:"maj7",duration:2},{chord:"Bb",type:"dom7",duration:2},{chord:"C",type:"min7",duration:2},{chord:"F",type:"maj7",duration:2}],drums:{kick:{pattern:[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0],vol:.35},hh:{pattern:[1,1,1,0,1,1,1,0,1,1,1,0,1,1,1,0],vol:.1},clap:{pattern:[0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0],vol:.2}},bass:{pattern:"walking",octave:2,rhythm:[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],type:"triangle",vol:.3},chords:{rhythm:[1,0,0,1,0,0,1,0,1,0,0,1,0,0,1,0],octave:4,type:"triangle",vol:.2},melody:{density:.5,octave:5,type:"triangle",vol:.25}},classical:{name:"Classical",root:"C",scale:"major",chordProgression:[{chord:"C",type:"maj",duration:2},{chord:"G",type:"maj",duration:2},{chord:"Am",type:"min",duration:2},{chord:"F",type:"maj",duration:2}],drums:{kick:{pattern:[1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0],vol:.2},hh:{pattern:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],vol:0},clap:{pattern:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],vol:0}},bass:{pattern:"arpeggio",octave:3,rhythm:[1,0,1,0,1,0,1,0,1,0,1,0,1,0,1,0],type:"sine",vol:.3},chords:{rhythm:[1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0],octave:4,type:"sine",vol:.25},melody:{density:.4,octave:5,type:"sine",vol:.3}}};
+function generateMelodyNotes(e,t,n,o,a=16){let i=[],d=null,r=[...new Set([...e,...t])];for(let s=0;s<a;s++)if(Math.random()<n){let e;e=Math.random()<.6&&t.length>0?t[Math.floor(Math.random()*t.length)]:r[Math.floor(Math.random()*r.length)],d&&Math.abs(NOTES.indexOf(e)-NOTES.indexOf(d))>4&&(e=r.find(e=>Math.abs(NOTES.indexOf(e)-NOTES.indexOf(d))<=4)||e),i.push({note:e,octave:o,step:s}),d=e}return i}
+function generateBassNotes(e,t,n,o,a=4){let i=[];return e.forEach((e,d)=>{let r=getChordNotes(e.chord,e.type),s=r[0];for(let c=0;c<a;c++){let a=d*a+c;if(o[a%o.length]){let d;d="root"===t?s:"walking"===t?getScaleNotes(e.chord,"mixolydian")[c%7]:"arpeggio"===t?r[c%r.length]:s,i.push({note:d,octave:n,step:a})}}}),i}
+function generateChordNotes(e,t,n,o=4){let a=[];return e.forEach((e,i)=>{let d=getChordNotes(e.chord,e.type);for(let r=0;r<o;r++){let o=i*o+r;t[o%t.length]&&d.forEach(e=>{a.push({note:e,octave:n,step:o})})}}),a}
+function generateDrumNotes(e,t){let n={kick:[],hh:[],clap:[]};for(let o=0;o<t;o++){let t=o%e.kick.pattern.length;e.kick.pattern[t]&&n.kick.push({step:o}),e.hh.pattern[t]&&n.hh.push({step:o}),e.clap.pattern[t]&&n.clap.push({step:o})}return n}
+function collectAllMidiEvents(){let e=GRAMMARS[currentStyle],t=4,n=16,o=t*n,a=60/currentBpm/4,i=[];generateDrumNotes(e.drums,o).kick.forEach(e=>{i.push({time:e*a,duration:.1,midiNote:DRUM_MIDI.kick,velocity:Math.round(.4*127),channel:9})});generateDrumNotes(e.drums,o).hh.forEach(e=>{i.push({time:e*a,duration:.05,midiNote:DRUM_MIDI.hh,velocity:Math.round(.08*127),channel:9})});generateDrumNotes(e.drums,o).clap.forEach(e=>{i.push({time:e*a,duration:.08,midiNote:DRUM_MIDI.clap,velocity:Math.round(.15*127),channel:9})});generateBassNotes(e.chordProgression,e.bass.pattern,e.bass.octave,e.bass.rhythm,4).forEach(t=>{let n=t.step*a,o=t.note+t.octave;void 0!==NOTE_TO_MIDI[o]&&i.push({time:n,duration:1.5*a,midiNote:NOTE_TO_MIDI[o],velocity:Math.round(e.bass.vol*density*127),channel:0})});generateChordNotes(e.chordProgression,e.chords.rhythm,e.chords.octave,4).forEach(t=>{let n=t.step*a,o=t.note+t.octave;void 0!==NOTE_TO_MIDI[o]&&i.push({time:n,duration:3*a,midiNote:NOTE_TO_MIDI[o],velocity:Math.round(e.chords.vol*density*127),channel:1})});let d=getScaleNotes(e.root,e.scale),r=[];e.chordProgression.forEach(e=>{r.push(...getChordNotes(e.chord,e.type))});let s=[...new Set(r)];return generateMelodyNotes(d,s,e.melody.density*density,e.melody.octave,o).forEach(t=>{let n=t.step*a,o=t.note+t.octave;void 0!==NOTE_TO_MIDI[o]&&i.push({time:n,duration:1.2*a,midiNote:NOTE_TO_MIDI[o],velocity:Math.round(e.melody.vol*density*127),channel:2})}),i.sort((e,t)=>e.time-t.time)}
+function exportMidi(){let e=collectAllMidiEvents(),t=480,n=60/currentBpm,o=t/n,a={};e.forEach(e=>{a[e.channel]||(a[e.channel]=[]),a[e.channel].push(e)});let i=[];i.push(77,84,104,100),i.push(0,0,0,6),i.push(0,1),i.push(Object.keys(a).length+1),i.push(0,t);let d=[],r=Math.round(6e7/currentBpm);d.push(0),d.push(255,81,3),d.push(r>>16&255),d.push(r>>8&255),d.push(255&r),d.push(0),d.push(255,47,0),i.push(77,84,114,107),i.push(d.length>>24&255,d.length>>16&255,d.length>>8&255,255&d.length),i.push(...d);Object.keys(a).forEach(e=>{let t=a[e],n=[],d=0;9!==parseInt(e)&&n.push(0,192|parseInt(e),0===parseInt(e)?33:1===parseInt(e)?1:41),t.forEach(e=>{let t=Math.round(e.time*o),a=t-d;d=t;let r=function(e){let t=[];t.push(127&e),e>>=7;for(;e>0;)t.unshift(128|127&e),e>>=7;return t}(a);n.push(...r),n.push(144|parseInt(e.channel),e.midiNote,e.velocity);let s=Math.round((e.time+e.duration)*o)-t,c=function(e){let t=[];t.push(127&e),e>>=7;for(;e>0;)t.unshift(128|127&e),e>>=7;return t}(s);n.push(...c),n.push(128|parseInt(e.channel),e.midiNote,0)}),n.push(0),n.push(255,47,0),i.push(77,84,114,107),i.push(n.length>>24&255,n.length>>16&255,n.length>>8&255,255&n.length),i.push(...n)});let s=new Uint8Array(i),c=new Blob([s],{type:"audio/midi"}),l=URL.createObjectURL(c),u=document.createElement("a");u.href=l,u.download=GRAMMARS[currentStyle].name+"_"+currentBpm+"BPM.mid",document.body.appendChild(u),u.click(),document.body.removeChild(u),URL.revokeObjectURL(l);let m=document.getElementById("midiInfo");m.classList.add("show"),setTimeout(()=>m.classList.remove("show"),3e3)}
+function scheduleMusic(e){if(!audioCtx)return;let t=4,n=16,o=t*n,a=60/currentBpm/4,i=getScaleNotes(e.root,e.scale),d=generateDrumNotes(e.drums,o);d.kick.forEach(e=>{playNote(60,audioCtx.currentTime+.1+e.step*a,.1,"sine",.4)}),d.hh.forEach(e=>{playNoise(audioCtx.currentTime+.1+e.step*a,.05,.08)}),d.clap.forEach(e=>{playNoise(audioCtx.currentTime+.1+e.step*a,.08,.15)});generateBassNotes(e.chordProgression,e.bass.pattern,e.bass.octave,e.bass.rhythm,4).forEach(t=>{let n=audioCtx.currentTime+.1+t.step*a,o=t.note+t.octave;NOTE_TO_FREQ[o]&&playNote(NOTE_TO_FREQ[o],n,1.5*a,e.bass.type,e.bass.vol*density)});generateChordNotes(e.chordProgression,e.chords.rhythm,e.chords.octave,4).forEach(t=>{let n=audioCtx.currentTime+.1+t.step*a,o=t.note+t.octave;NOTE_TO_FREQ[o]&&playNote(NOTE_TO_FREQ[o],n,3*a,e.chords.type,e.chords.vol*density)});let r=[];e.chordProgression.forEach(e=>{r.push(...getChordNotes(e.chord,e.type))});let s=[...new Set(r)];generateMelodyNotes(i,s,e.melody.density*density,e.melody.octave,o).forEach(t=>{let n=audioCtx.currentTime+.1+t.step*a,o=t.note+t.octave;NOTE_TO_FREQ[o]&&playNote(NOTE_TO_FREQ[o],n,1.2*a,e.melody.type,e.melody.vol*density)})}
+function updateGrammarDisplay(){let e=GRAMMARS[currentStyle];document.getElementById("grammarDisplay").innerHTML='<span class="rule">Style:</span> <span class="pattern">'+e.name+'</span><br><span class="rule">Root:</span> '+e.root+' | <span class="rule">Scale:</span> '+e.scale+"<br><span class=\"rule\">Progression:</span><br>"+e.chordProgression.map(e=>'&nbsp;&nbsp;<span class="pattern">'+e.chord+e.type+"</span> ("+e.duration+"b)").join("<br>")+'<br><span class="rule">Bass:</span> '+e.bass.pattern+'<br><span style="color:#666;">━━━━</span><br><span style="color:#888;">4 layers · MIDI export</span>'}
+function createVisBars(){let e=document.getElementById("visualizer");e.innerHTML="",visBars=[];for(let t=0;t<16;t++){let n=document.createElement("div");n.className="vis-bar",n.style.height="5px",e.appendChild(n),visBars.push(n)}}
+function animateVis(){if(!isPlaying)return;visBars.forEach(e=>{e.style.height=Math.random()*50+5+"px"}),isPlaying&&requestAnimationFrame(()=>setTimeout(animateVis,100))}
+function generate(){initAudio(),"suspended"===audioCtx.state&&audioCtx.resume(),scheduleMusic(GRAMMARS[currentStyle]),isPlaying=!0,document.getElementById("generateBtn").style.display="none",document.getElementById("stopBtn").style.display="block",animateVis()}
+function stop(){audioCtx&&(audioCtx.close(),audioCtx=null),isPlaying=!1,document.getElementById("generateBtn").style.display="block",document.getElementById("stopBtn").style.display="none",visBars.forEach(e=>e.style.height="5px")}
+document.getElementById("generateBtn").addEventListener("click",generate);
+document.getElementById("stopBtn").addEventListener("click",stop);
+document.getElementById("exportMidiBtn").addEventListener("click",exportMidi);
+document.getElementById("styleButtons").addEventListener("click",e=>{let t=e.target.closest(".style-btn");if(!t)return;document.querySelectorAll(".style-btn").forEach(e=>e.classList.remove("active")),t.classList.add("active"),currentStyle=t.dataset.style,updateGrammarDisplay(),isPlaying&&(stop(),setTimeout(generate,100))});
+document.getElementById("bpm").addEventListener("input",e=>{currentBpm=parseInt(e.target.value),document.getElementById("bpmValue").textContent=currentBpm,isPlaying&&(stop(),setTimeout(generate,100))});
+document.getElementById("density").addEventListener("input",e=>{density=parseInt(e.target.value)/100,document.getElementById("densityValue").textContent=Math.round(100*density),isPlaying&&(stop(),setTimeout(generate,100))});
+updateGrammarDisplay(),createVisBars();
+console.log("🎵 MIDI Export Ready");
+</script>
+</body>
+</html>
